@@ -1,0 +1,128 @@
+From 3fbc94f7634b9d449d90569d1580a6bdbe541575 Mon Sep 17 00:00:00 2001
+From: Sohan Kunkerkar <sohank2602@gmail.com>
+Date: Thu, 29 Feb 2024 12:14:51 -0500
+Subject: [PATCH] src/libcrun/handlers: add option to load wasi-nn plugin for
+ wasmedge
+
+This helps to load ggml plugin directly in crun to run AI models
+
+Signed-off-by: Sohan Kunkerkar <sohank2602@gmail.com>
+---
+ src/libcrun/handlers/wasmedge.c | 73 +++++++++++++++++++++++++++++++++
+ 1 file changed, 73 insertions(+)
+
+diff --git a/src/libcrun/handlers/wasmedge.c b/src/libcrun/handlers/wasmedge.c
+index 1dc2f60..c27cf93 100644
+--- a/src/libcrun/handlers/wasmedge.c
++++ b/src/libcrun/handlers/wasmedge.c
+@@ -77,6 +77,8 @@ libwasmedge_exec (void *cookie, __attribute__ ((unused)) libcrun_container_t *co
+   void (*WasmEdge_VMDelete) (WasmEdge_VMContext *Cxt);
+   WasmEdge_Result (*WasmEdge_VMRegisterModuleFromFile) (WasmEdge_VMContext *Cxt, WasmEdge_String ModuleName, const char *Path);
+   WasmEdge_Result (*WasmEdge_VMRunWasmFromFile) (WasmEdge_VMContext *Cxt, const char *Path, const WasmEdge_String FuncName, const WasmEdge_Value *Params, const uint32_t ParamLen, WasmEdge_Value *Returns, const uint32_t ReturnLen);
++  void (*WasmEdge_PluginLoadFromPath) (const char *Path);
++  void (*WasmEdge_PluginInitWASINN) (const char *const *NNPreloads, const uint32_t PreloadsLen);
+   bool (*WasmEdge_ResultOK) (const WasmEdge_Result Res);
+   WasmEdge_String (*WasmEdge_StringCreateByCString) (const char *Str);
+   uint32_t argn = 0;
+@@ -100,6 +102,8 @@ libwasmedge_exec (void *cookie, __attribute__ ((unused)) libcrun_container_t *co
+   WasmEdge_VMRegisterModuleFromFile = dlsym (cookie, "WasmEdge_VMRegisterModuleFromFile");
+   WasmEdge_VMGetImportModuleContext = dlsym (cookie, "WasmEdge_VMGetImportModuleContext");
+   WasmEdge_VMRunWasmFromFile = dlsym (cookie, "WasmEdge_VMRunWasmFromFile");
++  WasmEdge_PluginLoadFromPath = dlsym (cookie, "WasmEdge_PluginLoadFromPath");
++  WasmEdge_PluginInitWASINN = dlsym (cookie, "WasmEdge_PluginInitWASINN");
+   WasmEdge_ResultOK = dlsym (cookie, "WasmEdge_ResultOK");
+   WasmEdge_StringCreateByCString = dlsym (cookie, "WasmEdge_StringCreateByCString");
+ 
+@@ -118,6 +122,21 @@ libwasmedge_exec (void *cookie, __attribute__ ((unused)) libcrun_container_t *co
+   WasmEdge_ConfigureAddProposal (configure, WasmEdge_Proposal_ReferenceTypes);
+   WasmEdge_ConfigureAddProposal (configure, WasmEdge_Proposal_SIMD);
+   WasmEdge_ConfigureAddHostRegistration (configure, WasmEdge_HostRegistration_Wasi);
++  // Check if the environment variable is set
++  extern char **environ;
++  for (char **env = environ; *env != NULL; ++env)
++    {
++      if (strstr (*env, "WASMEDGE_PLUGIN_PATH=") != NULL)
++        {
++          char *plugin_path = strchr (*env, '=') + 1;
++          WasmEdge_PluginLoadFromPath (plugin_path);
++        }
++      else if (strstr (*env, "WASMEDGE_WASINN_PRELOAD=") != NULL)
++        {
++          const char *const nnpreload = strchr (*env, '=') + 1;
++          WasmEdge_PluginInitWASINN (&nnpreload, 1);
++        }
++    }
+ 
+   vm = WasmEdge_VMCreate (configure, NULL);
+   if (UNLIKELY (vm == NULL))
+@@ -162,6 +181,59 @@ wasmedge_can_handle_container (libcrun_container_t *container, libcrun_error_t *
+   return wasm_can_handle_container (container, err);
+ }
+ 
++static int
++libwasmedge_configure_container (void *cookie, enum handler_configure_phase phase,
++                                 libcrun_context_t *context, libcrun_container_t *container,
++                                 const char *rootfs, libcrun_error_t *err)
++{
++  int ret;
++  cleanup_close int rootfsfd_cleanup = -1;
++  runtime_spec_schema_config_schema *def = container->container_def;
++
++  // Open the rootfs directory
++  if (rootfs != NULL)
++    {
++      rootfsfd_cleanup = open (rootfs, O_PATH | O_CLOEXEC);
++      if (UNLIKELY (rootfsfd_cleanup < 0))
++        return crun_make_error (err, errno, "open `%s`", rootfs);
++    }
++
++  if (phase != HANDLER_CONFIGURE_AFTER_MOUNTS)
++    return 0;
++
++  // Check if /usr/local/lib is already present in spec
++  if (def->linux && def->mounts)
++    {
++      for (size_t i = 0; i < def->mounts_len; i++)
++        {
++          if (strcmp (def->mounts[i]->destination, "/usr/lib/wasmedge") == 0)
++            return 0;
++        }
++    }
++
++  // Get the plugin folder path from the environment variable
++  char *plugin_mount_env = getenv ("WASMEDGE_PLUGIN_MOUNT");
++  printf ("RECEIVED WASMEDGE_PLUGIN_MOUNT value: %s\n", plugin_mount_env);
++  if (plugin_mount_env != NULL)
++    {
++      // Mount the plugin folder to /usr/lib/wasmedge with specific options
++      char *options[] = {
++        "ro",
++        "rprivate",
++        "nosuid",
++        "nodev",
++        "rbind"
++      };
++
++      ret = libcrun_container_do_bind_mount (container, plugin_mount_env, "/usr/lib/wasmedge", options, 5, err);
++      if (ret < 0)
++        return ret;
++      crun_error_release (err);
++    }
++
++  return 0;
++}
++
+ struct custom_handler_s handler_wasmedge = {
+   .name = "wasmedge",
+   .alias = "wasm",
+@@ -170,6 +242,7 @@ struct custom_handler_s handler_wasmedge = {
+   .unload = libwasmedge_unload,
+   .run_func = libwasmedge_exec,
+   .can_handle_container = wasmedge_can_handle_container,
++  .configure_container = libwasmedge_configure_container,
+ };
+ 
+ #endif
+-- 
+2.43.2
+
