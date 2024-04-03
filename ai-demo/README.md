@@ -152,12 +152,46 @@ $ kubectl apply -f llm-wasm.yaml
 5. View logs and interact with the container:
 ```bash
 $ kubectl logs llama-pod
+[INFO] Model alias: default
+[INFO] Prompt context size: 512
+[INFO] Number of tokens to predict: 1024
+[INFO] Number of layers to run on the GPU: 100
+[INFO] Batch size for prompt processing: 512
+[INFO] Temperature for sampling: 0.8
+[INFO] Top-p sampling (1.0 = disabled): 0.9
+[INFO] Penalize repeat sequence of tokens: 1.1
+[INFO] presence penalty (0.0 = disabled): 0
+[INFO] frequency penalty (0.0 = disabled): 0
+[INFO] Use default system prompt
+[INFO] Prompt template: Llama2Chat
+[INFO] Log prompts: false
+[INFO] Log statistics: false
+[INFO] Log all information: false
+[INFO] Plugin version: b2230 (commit 89febfed)
+
+================================== Running in interactive mode. ===================================
+
+    - Press [Ctrl+C] to interject at any time.
+    - Press [Return] to end the input.
+    - For multi-line inputs, end each line with '\' and press [Return] to get another line.
+
+
+[You]:
 ```
 
-6. Interact with bot wiht the following command:
+6. Interact with bot using the following command:
 ```bash
 $ kubectl attach llama-pod -c llama-container -i -t
+if you don't see a command prompt, try pressing enter.
+what is the capital of North Carolina?
+
+[Bot]:
+The capital of North Carolina is Raleigh.
+
+[You]: 
 ```
+
+You can also view the entire demo [here](https://youtu.be/n55R9TUep-U?si=3rB81WGvbTRvNqdx).
 
 ## Credits
 The example container application and model used in this tutorial are based on the LLM Inference [tutorial](https://wasmedge.org/docs/develop/rust/wasinn/llm_inference/) provided by WASMedge.
