@@ -23,30 +23,28 @@ $ git clone https://github.com/sohankunkerkar/wasm-ai-kubecon-demo
 $ rpm -ivh rpmbuild/RMPS/x86/crun-wasm-1.14.4-1.fc39.x86_64.rpm
 ```
 ## Step 2: Configure CRI-O
-1. Clone the cri-o repository and apply the patch.
+1. Clone the cri-o repository and build the crio binary.
 ```bash=
-git clone https://github.com/cri-o/cri-o.git
-cd cri-o
-git apply 0001-add-runtime_env-to-crio-runtimeconfig.patch
-```
-2. Build the crio binary
-```bash
+$ git clone https://github.com/cri-o/cri-o.git
+$ cd cri-o
 $ make binaries
 ```
-3. Create the CRI-O configuration file (crio-wasm.conf):
+
+2. Create the CRI-O configuration file (crio-wasm.conf):
 ```toml
 [crio.runtime]
 default_runtime = "crun-wasm"
 
 [crio.runtime.runtimes.crun-wasm]
 runtime_path = "/usr/bin/crun"
-runtime_env = [
+monitor_env = [
     "WASMEDGE_PLUGIN_MOUNT=$HOME/.wasmedge/plugin",
 ]
 platform_runtime_paths = {"wasi/wasm32" = "/usr/bin/crun-wasm"}
 ```
+**Note:** If wasmedge is installed under `/usr/lib/wasmedge`, then use that value for `WASM_PLUGIN_MOUNT`.
 
-4. Run CRI-O with the custom configuration:
+3. Run CRI-O with the custom configuration:
 ```bash
 $ sudo ./bin/crio --config crio-wasm.conf
 ```
@@ -64,8 +62,6 @@ ENV WASMEDGE_PLUGIN_PATH=${WASMEDGE_PLUGIN_PATH:-"/usr/lib/wasmedge"}
 ENV WASMEDGE_WASINN_PRELOAD=${WASMEDGE_WASINN_PRELOAD:-"default:GGML:AUTO:model.gguf"}
 
 WORKDIR /app
-
-COPY llama-chat.wasm /app
 
 ENTRYPOINT ["/app/llama-chat.wasm"]
 ```
