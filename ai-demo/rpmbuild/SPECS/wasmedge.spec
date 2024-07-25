@@ -66,7 +66,6 @@ This package contains necessary header files for %{reponame} development.
     -DWASMEDGE_PLUGIN_WASI_NN_BACKEND="GGML" \
     -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA=ON \
     -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA_NATIVE=ON \
-    -DWASMEDGE_PLUGIN_WASI_NN_RUST_MODEL="squeezenet;whisper" \
     .
 %cmake_build
 mkdir rt
@@ -79,7 +78,6 @@ cd rt
     -DWASMEDGE_PLUGIN_WASI_NN_BACKEND="GGML" \
     -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA=ON \
     -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA_NATIVE=ON \
-    -DWASMEDGE_PLUGIN_WASI_NN_RUST_MODEL="squeezenet;whisper" \
     .
 %cmake_build
 
