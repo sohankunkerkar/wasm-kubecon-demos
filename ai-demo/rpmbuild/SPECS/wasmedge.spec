@@ -1,7 +1,7 @@
-%global version 0.13.5
+%global version 0.14.0
 %global reponame WasmEdge
 %global capi_soname 0
-%global capi_version 0.0.3
+%global capi_version 0.1.0
 
 Name:    wasmedge
 Version: %{version}
@@ -18,6 +18,7 @@ BuildRequires: lld-devel
 BuildRequires: llvm-devel
 BuildRequires: ninja-build
 BuildRequires: spdlog-devel
+BuildRequires: openssl-devel
 Requires:      lld
 Requires:      llvm
 Requires:      spdlog
@@ -58,11 +59,28 @@ This package contains necessary header files for %{reponame} development.
 [ -f VERSION ] || echo -n %{version} > VERSION
 
 %build
-%cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=OFF -DWASMEDGE_BUILD_TESTS=OFF -DWASMEDGE_PLUGIN_WASI_NN_BACKEND="GGML" .
+%cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DWASMEDGE_BUILD_TESTS=OFF \
+    -DWASMEDGE_PLUGIN_WASI_NN=ON \
+    -DWASMEDGE_PLUGIN_WASI_NN_BACKEND="GGML" \
+    -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA=ON \
+    -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA_NATIVE=ON \
+    -DWASMEDGE_PLUGIN_WASI_NN_RUST_MODEL="squeezenet;whisper" \
+    .
 %cmake_build
 mkdir rt
 cd rt
-%cmake -S .. -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=OFF -DWASMEDGE_BUILD_TESTS=OFF -DWASMEDGE_BUILD_AOT_RUNTIME=OFF -DWASMEDGE_PLUGIN_WASI_NN_BACKEND="GGML" .
+%cmake -S .. -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DWASMEDGE_BUILD_TESTS=OFF \
+    -DWASMEDGE_BUILD_AOT_RUNTIME=OFF \
+    -DWASMEDGE_PLUGIN_WASI_NN=ON \
+    -DWASMEDGE_PLUGIN_WASI_NN_BACKEND="GGML" \
+    -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA=ON \
+    -DWASMEDGE_PLUGIN_WASI_NN_GGML_LLAMA_NATIVE=ON \
+    -DWASMEDGE_PLUGIN_WASI_NN_RUST_MODEL="squeezenet;whisper" \
+    .
 %cmake_build
 
 %install
@@ -76,6 +94,15 @@ rm -rf %{buildroot}%{_includedir}
 cd ..
 %cmake_install
 
+# Remove unpackaged files
+rm -f %{buildroot}%{_bindir}/convert.py
+rm -f %{buildroot}%{_includedir}/ggml-alloc.h
+rm -f %{buildroot}%{_includedir}/ggml-backend.h
+rm -f %{buildroot}%{_includedir}/ggml.h
+rm -f %{buildroot}%{_includedir}/llama.h
+rm -f %{buildroot}%{_libdir}/libllama.a
+rm -rf %{buildroot}%{_libdir}/cmake/Llama
+
 %files
 %license LICENSE LICENSE.spdx
 %doc Changelog.md README.md SECURITY.md
@@ -83,6 +110,7 @@ cd ..
 %{_bindir}/wasmedgec
 %{_libdir}/lib%{name}.so.%{capi_version}
 %{_libdir}/lib%{name}.so.%{capi_soname}
+%{_libdir}/wasmedge/libwasmedgePluginWasiNN.so
 
 %files rt
 %license LICENSE LICENSE.spdx
@@ -102,7 +130,6 @@ cd ..
 %{_includedir}/%{name}/version.h
 %{_includedir}/%{name}/wasmedge.h
 %{_libdir}/lib%{name}.so
-/usr/lib/debug/%{_libdir}/wasmedge/*.debug
 %{_libdir}/wasmedge/libwasmedgePluginWasiNN.so
 
 # Exclude files that should not be packaged

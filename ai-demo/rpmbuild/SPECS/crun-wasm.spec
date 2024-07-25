@@ -1,11 +1,11 @@
 Name: crun-wasm
-Version: 1.14.4
+Version: 1.15
 Release: %autorelease
 License: GPL-2.0-only
 Summary: Provides crun built with wasm support
 URL: https://github.com/containers/crun
-Source0: %{url}/releases/download/%{version}/crun-%{version}.tar.xz
-Patch0: 0001-src-libcrun-handlers-add-option-to-load-wasi-nn-plug.patch
+Source0: %{url}/releases/download/%{version}/crun-%{version}.tar.gz
+Patch0: 0001-debug-wasi-nn-information.patch
 # wasmedge is packaged only for aarch64 and x86_64
 # Ref: https://src.fedoraproject.org/rpms/wasmedge/raw/rawhide/f/wasmedge.spec
 ExclusiveArch: aarch64 x86_64
