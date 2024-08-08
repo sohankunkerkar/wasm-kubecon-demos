@@ -5,14 +5,15 @@ metadata:
 spec:
   containers:
   - name: llama-container
-    image: quay.io/sohankunkerkar/llama-crun:v2
+    image: quay.io/sohankunkerkar/llama-crun:v3
     volumeMounts:
     - name: wasm-volume
       mountPath: /app
-    stdin: true   # Enable stdin for the container
-    tty: true     # Enable tty for the container
+    stdin: true
+    tty: true
   volumes:
-  - name: wasm-volume
-    hostPath:
-      path: /home/skunkerk/wasm-test/
-  restartPolicy: Never
+    - name: wasm-volume
+      image:
+        reference: quay.io/sohankunkerkar/wasm-ai-model:v1
+        pullPolicy: IfNotPresent
+

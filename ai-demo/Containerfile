@@ -2,12 +2,12 @@
 FROM scratch
 
 ENV WASMEDGE_PLUGIN_PATH=${WASMEDGE_PLUGIN_PATH:-"/usr/lib/wasmedge"}
-ENV WASMEDGE_WASINN_PRELOAD=${WASMEDGE_WASINN_PRELOAD:-"default:GGML:AUTO:model.gguf"}
+ENV WASMEDGE_WASINN_PRELOAD=${WASMEDGE_WASINN_PRELOAD:-"default:GGML:AUTO:/app/model.gguf"}
 
-WORKDIR /app
+WORKDIR /work
 
 # Copy wasm files to the directory
-COPY llama-chat.wasm /app
+COPY llama-chat.wasm /work
 
 # COPY model.gguf /app
-ENTRYPOINT ["/app/llama-chat.wasm"]
+ENTRYPOINT ["/work/llama-chat.wasm"]
