@@ -141,7 +141,7 @@ metadata:
 spec:
   containers:
   - name: llama-container
-    image: quay.io/sohankunkerkar/llama-crun:v3
+    image: quay.io/sohankunkerkar/llama-crun:v4
     volumeMounts:
     - name: wasm-volume
       mountPath: /app
